@@ -11,7 +11,7 @@ var Priors = {
 
 exports.query = function (collection) {
     var friends = JSON.parse(JSON.stringify(collection));
-    var funcList = Array.from(arguments).slice(1);
+    var funcList = [].slice.call(arguments, 1);
     funcList.sort(function (one, another) {
         return Priors[another.name] - Priors[one.name];
     });
@@ -24,7 +24,7 @@ exports.query = function (collection) {
 
 
 exports.select = function () {
-    var selectedFields = Array.from(arguments);
+    var selectedFields = [].slice.call(arguments);
 
     return function select(collection) {
         collection.forEach(function (elem) {
