@@ -1,25 +1,32 @@
 'use strict';
 
 exports.isStar = false;
-var Priors = {
+var priors = {
     filterIn: 5,
-    select: 3,
     sortBy: 4,
-    format: 1,
-    limit: 2
+    select: 3,
+    limit: 2,
+    format: 1
 };
 
-exports.query = function (collection) {
-    var friends = JSON.parse(JSON.stringify(collection));
-    var funcList = [].slice.call(arguments, 1);
-    funcList.sort(function (one, another) {
-        return Priors[another.name] - Priors[one.name];
-    });
-    funcList.forEach(function (func) {
-        friends = func(friends);
+function copyCollection(collection) {
+    var friends = [];
+    collection.forEach(function (elem) {
+        friends.push(Object.assign({}, elem));
     });
 
     return friends;
+}
+
+exports.query = function (collection) {
+    var friends = copyCollection(collection);
+    var funcList = [].slice.call(arguments, 1);
+
+    return funcList.sort(function (one, another) {
+        return priors[another.name] - priors[one.name];
+    }).reduce(function (prevArr, func) {
+        return func(prevArr);
+    }, friends);
 };
 
 
@@ -27,16 +34,16 @@ exports.select = function () {
     var selectedFields = [].slice.call(arguments);
 
     return function select(collection) {
-        collection.forEach(function (elem) {
-            var properties = Object.keys(elem);
-            properties.forEach(function (property) {
-                if (selectedFields.indexOf(property) === -1) {
-                    delete elem[property];
+        return collection.slice().map(function (elem) {
+            var changedElem = {};
+            selectedFields.forEach(function (field) {
+                if (field in elem) {
+                    changedElem[field] = elem[field];
                 }
             });
-        });
 
-        return collection;
+            return changedElem;
+        });
     };
 };
 
@@ -44,36 +51,30 @@ exports.select = function () {
 exports.filterIn = function (property, values) {
     return function filterIn(collection) {
         return collection.filter(function (elem) {
-            if (elem.hasOwnProperty(property)) {
-                return values.indexOf(elem[property]) !== -1;
-            }
-
-            return false;
+            return values.indexOf(elem[property]) !== -1;
         });
     };
 };
 
 
 exports.sortBy = function (property, order) {
-    var sign = { 'asc': 1, 'desc': -1 };
+    var sign = order === 'asc' ? 1 : -1;
 
     return function sortBy(collection) {
         return collection.sort(function (one, another) {
-            if (one.hasOwnProperty(property) && another.hasOwnProperty(property)) {
-                return sign[order] * (one[property] > another[property] ? 1 : -1);
-            }
-
-            return 0;
+            return sign * (one[property] > another[property] ? 1 : -1);
         });
     };
 };
 
 exports.format = function (property, formatter) {
     return function format(collection) {
-        collection.forEach(function (elem) {
+        collection.map(function (elem) {
             if (elem.hasOwnProperty(property)) {
                 elem[property] = formatter(elem[property]);
             }
+
+            return elem;
         });
 
         return collection;
