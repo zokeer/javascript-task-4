@@ -9,24 +9,36 @@ var priors = {
     format: 1
 };
 
+function copyElem(elem) {
+    var copied = {};
+    for (var attr in elem) {
+        if (elem.hasOwnProperty(attr)) {
+            copied[attr] = elem[attr];
+        }
+    }
+
+    return copied;
+}
+
 function copyCollection(collection) {
-    var friends = [];
+    var copiedCollection = [];
     collection.forEach(function (elem) {
-        friends.push(Object.assign({}, elem));
+        copiedCollection.push(copyElem(elem));
     });
 
-    return friends;
+    return copiedCollection;
 }
 
 exports.query = function (collection) {
-    var friends = copyCollection(collection);
+    var copiedCollection = copyCollection(collection);
     var funcList = [].slice.call(arguments, 1);
 
     return funcList.sort(function (one, another) {
         return priors[another.name] - priors[one.name];
-    }).reduce(function (prevArr, func) {
-        return func(prevArr);
-    }, friends);
+    })
+    .reduce(function (changedCollection, func) {
+        return func(changedCollection);
+    }, copiedCollection);
 };
 
 
@@ -34,7 +46,7 @@ exports.select = function () {
     var selectedFields = [].slice.call(arguments);
 
     return function select(collection) {
-        return collection.slice().map(function (elem) {
+        return collection.map(function (elem) {
             var changedElem = {};
             selectedFields.forEach(function (field) {
                 if (field in elem) {
@@ -69,15 +81,13 @@ exports.sortBy = function (property, order) {
 
 exports.format = function (property, formatter) {
     return function format(collection) {
-        collection.map(function (elem) {
+        return collection.map(function (elem) {
             if (elem.hasOwnProperty(property)) {
                 elem[property] = formatter(elem[property]);
             }
 
             return elem;
         });
-
-        return collection;
     };
 };
 
